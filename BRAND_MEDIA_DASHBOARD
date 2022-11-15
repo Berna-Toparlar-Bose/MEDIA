@@ -1,0 +1,199 @@
+Below query is created for Brand Media Dashboard
+
+----------------------------------------------------------------------------------------------------------------------------
+create or replace view MCA.MCA.BRAND_MEDIA_DASHBOARD(
+	AD_ID,
+	AGENCY,
+	AUDIENCE,
+	CAMPAIGN,
+	COHORT,
+	COUNTRY,
+	CREATIVE,
+	DAY,
+	FISCAL_WEEK_BEGIN,
+	FISCAL_YEAR,
+	FUNNEL,
+	MARKETING_PRODUCT_CATEGORY,
+	MEDIA_CODE,
+	MEDIA_CODE_CHANNEL,
+	MEDIA_CODE_PRODUCT,
+	MEDIA_CODE_CAMPAIGN,
+	MEDIA_CODE_PLATFORM,
+	MEDIA_CODE_REST,
+	MEDIA_TYPE,
+	MODEL_GROUP,
+	MODEL_PRODUCT,
+	OBJECTIVE,
+	PARTNERSHIP_INITIATIVE,
+	PLACEMENT_TYPE,
+	PLATFORM,
+	PRODUCT,
+	TENTPOLE,
+	LINK_CLICKS,
+	ENGAGEMENTS,
+	ALLOCATED_IMPRESSIONS,
+	SPEND,
+	VIDEO_COMPLETIONS,
+	VIDEO_VIEWS,
+	BOSEXX_POST_CAMPAIGN,
+	BOSEXX_ORDERS,
+	BOSEXX_REVENUE,
+	BOSEXX_UNITS,
+	BOSEXX_VISITS,
+	BOSEXX_DATE
+) as(
+WITH VAYNER_FY23 AS (
+SELECT 
+ad_id,
+agency,
+audience,
+campaign, 
+cohort,
+country,
+creative,
+day,
+fiscal_week_begin,
+fiscal_year,
+funnel,
+marketing_product_category,
+media_code,
+split_part(media_code, '_', 2) as media_code_channel,
+split_part(media_code, '_', 3) as media_code_product,
+left(split_part(media_code, '_', 4),2) as media_code_campaign,
+split_part(media_code, '_', 6) as media_code_platform,
+substring(media_code, 19) as media_code_rest,
+media_type,
+model_group,
+model_product,
+objective,
+partnership_initiative,
+placement_type,
+platform,
+product,
+tentpole,
+link_clicks,
+engagements,
+allocated_impressions,
+spend,
+video_completions,
+video_views
+FROM MCA.MCA_CLEAN_ROOM.MCA_VW_MEDIA_ACTUALS_WEEKLY
+WHERE AGENCY='VaynerMedia'
+AND MEDIA_CODE <> 'null'
+AND NOT (DAY IN ('2022-07-01','2022-07-02','2022-07-03','2022-07-04','2022-07-05') 
+AND MEDIA_CODE IN ('25_SA_FL_SE_00_CH_200090', '25_SA_FL_SE_00_CH_200101', '25_SA_FL_SE_00_CH_200117','25_SA_FL_SE_00_CH_200122','25_SA_FL_SE_00_CH_VM_201085',
+                     '25_SA_FL_SE_00_CH_VM_201086','25_SA_FL_SE_00_CH_VM_201087','25_SA_FL_SE_00_CH_VM_201091','25_SA_FL_SE_00_CH_VM_201092','25_SA_FL_SE_00_CH_VM_201093',
+                     '25_SA_FL_SE_00_CH_VM_201097','25_SA_FL_SE_00_CH_VM_201098','25_SA_FL_SE_00_CH_VM_201099','25_SA_FL_SE_00_CH_VM_201103','25_SA_FL_SE_00_CH_VM_201104',
+                     '25_SA_FL_SE_00_CH_VM_201105','25_SA_FL_SE_00_CH_VM_201223','25_SA_FL_SE_00_CH_VM_201224'))
+)
+, BOSEXX AS (
+SELECT 
+post_campaign as bosexx_post_campaign,
+SUM(NULLIF(num_orders,0)) as bosexx_orders,
+SUM(NULLIF(session_revenue,0)) as bosexx_revenue,
+SUM(NULLIF(total_units,0)) as bosexx_units,
+SUM(NULLIF(total_visits,0)) as bosexx_visits,
+date_from_parts(year, month, day) as bosexx_date
+FROM MCA.BOSEXX.MCA_VW_VISITS_SUMMARIZED_EST_CONVERSIONRATE
+GROUP BY post_campaign, year, month, day
+), FY23 AS (
+SELECT a.*, b.* FROM VAYNER_FY23 AS a
+LEFT JOIN BOSEXX AS b
+ON a.MEDIA_CODE=b.BOSEXX_POST_CAMPAIGN
+AND a.DAY=b.BOSEXX_DATE
+), FY22 AS (
+SELECT 
+ad_id,
+agency,
+audience,
+campaign, 
+cohort,
+country,
+creative,
+day,
+fiscal_week_begin,
+fiscal_year,
+funnel,
+marketing_product_category,
+NULL as media_code,
+NULL as media_code_channel,
+NULL as media_code_product,
+NULL as media_code_campaign,
+NULL as media_code_platform,
+NULL as media_code_rest,
+media_type,
+model_group,
+model_product,
+objective,
+partnership_initiative,
+placement_type,
+platform,
+product,
+tentpole,
+link_clicks,
+engagements,
+allocated_impressions,
+spend,
+video_completions,
+video_views,
+NULL as bosexx_post_campaign,
+NULL as bosexx_orders,
+NULL as bosexx_revenue,
+NULL as bosexx_units,
+NULL as bosexx_visits,
+NULL as bosexx_date
+FROM MCA.MCA_CLEAN_ROOM.MCA_VW_MEDIA_ACTUALS_WEEKLY
+WHERE AGENCY='VaynerMedia'
+AND MEDIA_CODE IS NULL
+), MEDIACOM AS (
+SELECT 
+NULL as ad_id,
+agency,
+audience,
+campaign, 
+NULL as cohort,
+country,
+creative,
+day,
+fiscal_week_begin,
+fiscal_year,
+funnel,
+marketing_product_category,
+NULL as media_code,
+NULL as media_code_channel,
+NULL as media_code_product,
+NULL as media_code_campaign,
+NULL as media_code_platform,
+NULL as media_code_rest,
+media_type,
+model_group,
+model_product,
+objective,
+NULL as partnership_initiative,
+placement_type,
+platform,
+product,
+NULL as tentpole,
+link_clicks,
+engagements,
+allocated_impressions,
+spend,
+video_completions,
+video_views,
+NULL as bosexx_post_campaign,
+NULL as bosexx_orders,
+NULL as bosexx_revenue,
+NULL as bosexx_units,
+NULL as bosexx_visits,
+NULL as bosexx_date
+FROM MCA.MCA_CLEAN_ROOM.MCA_VW_MEDIA_ACTUALS_WEEKLY
+WHERE AGENCY = 'Mediacom'
+AND MEDIA_TYPE IN ('Digital Media', 'Social','Audio Services')
+AND DAY >= '2021-04-01'
+) 
+SELECT * FROM FY23
+UNION
+SELECT * FROM FY22
+UNION
+SELECT * FROM MEDIACOM
+);
